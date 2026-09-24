@@ -8,9 +8,8 @@ const DEFAULTS = {
   lineHeight: 1.08,
   maxLines: 3,
   gap: 26,
-  frameWidthPct: 100,
   frameHeightPct: 32,
-  horizontalMarginPct: 0,
+  textMarginPx: 25,
   blockOffsetY: 0,
   zoom: 1,
   panX: 0,
@@ -57,9 +56,8 @@ export default function Page() {
   const [lineHeight, setLineHeight] = useState(DEFAULTS.lineHeight);
   const [maxLines, setMaxLines] = useState(DEFAULTS.maxLines);
   const [gap, setGap] = useState(DEFAULTS.gap);
-  const [frameWidthPct, setFrameWidthPct] = useState(DEFAULTS.frameWidthPct);
   const [frameHeightPct, setFrameHeightPct] = useState(DEFAULTS.frameHeightPct);
-  const [marginPct, setMarginPct] = useState(DEFAULTS.horizontalMarginPct);
+  const [textMarginPx, setTextMarginPx] = useState(DEFAULTS.textMarginPx);
   const [blockOffsetY, setBlockOffsetY] = useState(DEFAULTS.blockOffsetY);
   const [zoom, setZoom] = useState(DEFAULTS.zoom);
   const [panX, setPanX] = useState(DEFAULTS.panX);
@@ -127,11 +125,15 @@ export default function Page() {
   function getGeometry(ctx) {
     const W = templateSize.w;
     const H = templateSize.h;
-    const margin = Math.round(W * (marginPct / 100));
-    const frameW = Math.round((W - margin * 2) * (frameWidthPct / 100));
+    // El video siempre ocupa todo el ancho de la plantilla.
+    const frameW = W;
     const frameH = Math.round(H * (frameHeightPct / 100));
-    const frameX = Math.round((W - frameW) / 2);
-    const wrapped = wrapText(ctx, text, frameW, fontSize);
+    const frameX = 0;
+
+    // Solo el texto tiene márgenes laterales. Por defecto: 25 px a cada lado.
+    const textX = Math.max(0, Math.round(textMarginPx));
+    const textW = Math.max(1, W - textX * 2);
+    const wrapped = wrapText(ctx, text, textW, fontSize);
     const lh = Math.round(wrapped.size * lineHeight);
     const textH = Math.max(lh, wrapped.lines.length * lh);
     const blockH = textH + gap + frameH;
@@ -140,7 +142,7 @@ export default function Page() {
     const videoY = textY + textH + gap;
 
     return {
-      W, H, frameW, frameH, frameX, textY, videoY, textH,
+      W, H, frameW, frameH, frameX, textX, textW, textY, videoY, textH,
       lines: wrapped.lines, fittedFontSize: wrapped.size, lineHeightPx: lh
     };
   }
@@ -193,7 +195,7 @@ export default function Page() {
     ctx.textAlign = "left";
     ctx.font = `700 ${g.fittedFontSize}px ${fontFamily}`;
     g.lines.forEach((line, i) => {
-      ctx.fillText(line, g.frameX, g.textY + i * g.lineHeightPx);
+      ctx.fillText(line, g.textX, g.textY + i * g.lineHeightPx);
     });
     ctx.restore();
 
@@ -228,7 +230,7 @@ export default function Page() {
 
   useEffect(() => {
     draw();
-  }, [templateSize, videoSize, text, fontSize, lineHeight, maxLines, gap, frameWidthPct, frameHeightPct, marginPct, blockOffsetY, zoom, panX, panY, fontName, templateUrl, videoUrl, playhead]);
+  }, [templateSize, videoSize, text, fontSize, lineHeight, maxLines, gap, frameHeightPct, textMarginPx, blockOffsetY, zoom, panX, panY, fontName, templateUrl, videoUrl, playhead]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -368,7 +370,7 @@ export default function Page() {
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
     ctx.font = `700 ${g.fittedFontSize}px ${fontFamily}`;
-    g.lines.forEach((line, i) => ctx.fillText(line, g.frameX, g.textY + i * g.lineHeightPx));
+    g.lines.forEach((line, i) => ctx.fillText(line, g.textX, g.textY + i * g.lineHeightPx));
     return new Promise((resolve) => c.toBlob(resolve, "image/png"));
   }
 
@@ -486,7 +488,7 @@ export default function Page() {
         <div>
           <div className="eyebrow">LOCAL · GRATIS · SIN SUBIR TU VIDEO</div>
           <h1>Meme Video Editor</h1>
-          <p>Plantilla fija + texto automático + video recortable. El bloque siempre se mantiene centrado.</p>
+          <p>Plantilla fija + texto con márgenes propios + video a todo el ancho. El bloque se mantiene centrado.</p>
         </div>
         <div className="badge">Vercel</div>
       </header>
@@ -535,10 +537,10 @@ export default function Page() {
           <Range label="Separación texto / video" value={gap} min={0} max={120} step={1} suffix="px" onChange={setGap} />
           <Range label="Interlineado" value={lineHeight} min={0.9} max={1.5} step={0.01} suffix="×" onChange={setLineHeight} />
 
-          <div className="sectionTitle">3. Marco del video</div>
-          <Range label="Ancho" value={frameWidthPct} min={50} max={100} step={1} suffix="%" onChange={setFrameWidthPct} />
-          <Range label="Alto" value={frameHeightPct} min={15} max={60} step={1} suffix="%" onChange={setFrameHeightPct} />
-          <Range label="Margen lateral base" value={marginPct} min={0} max={15} step={0.5} suffix="%" onChange={setMarginPct} />
+          <div className="sectionTitle">3. Texto y video</div>
+          <Range label="Margen lateral del texto" value={textMarginPx} min={0} max={160} step={1} suffix="px" onChange={setTextMarginPx} />
+          <Range label="Alto del video" value={frameHeightPct} min={15} max={60} step={1} suffix="%" onChange={setFrameHeightPct} />
+          <div className="status">El video ocupa siempre el 100% del ancho. El margen solo afecta al texto.</div>
           <Range label="Mover bloque completo" value={blockOffsetY} min={-400} max={400} step={2} suffix="px" onChange={setBlockOffsetY} />
 
           <div className="sectionTitle">4. Encuadre</div>
